@@ -49,7 +49,7 @@ def image_link_process(image_link: str, status_code=200, tag=None) -> str:
             url_path[-1] = f"wallhaven-{url_path[-1]}"
             return "/".join(url_path)
     elif status_code == 404:  # 有可能是大小图片的后缀不同导致404，因此修改再进行尝试，为节省资源，只尝试一次
-        image_link = image_link.replace('jpg', 'png')
+        image_link = image_link.replace('jpg', 'png')       # 将jpg的后缀替换为png
         try:
             resp = requests.get(image_link, headers=rand_ua())
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):  # 如果五秒内没有响应，那么输出连接超时
@@ -104,7 +104,7 @@ def download_pictures(page_num_fuc: int, tag: str, n):  # 一页一页地下载�
     for link in small_list:
         full_pic = image_link_process(link)  # 全屏壁纸的链接
         try:
-            fullpic_resp = requests.get(full_pic, timeout=10)
+            fullpic_resp = requests.get(full_pic, timeout=5)
         except (requests.exceptions.ConnectTimeout, requests.exceptions.Timeout):
             warning('连接网页超时')
             continue  # 跳过这一张图片的下载
@@ -113,10 +113,14 @@ def download_pictures(page_num_fuc: int, tag: str, n):  # 一页一页地下载�
         if not fullpic_resp.status_code == 200:
             fail_count = fail_count + 1
             print(f"找不到图片！({fail_count})")
-            fail_list.append((fullpic_resp.status_code, full_pic))  # 将状态码以及url已元组形式存放
+            fail_list.append((full_pic, fullpic_resp.status_code))  # 将url以及状态码以元组形式存放
         # 连接成功时：
         else:
             write_pic(tag, fullpic_resp, n)
+    if len(fail_count) != 0:
+        print('图片重新下载中……')
+        for fail_link in fail_count:
+            image_link_process(fail_link[0], fail_link[1], tag)
     print(f"第{page_num_fuc}页一共下载了{n.value}张图片，下载失败的图片一共有{fail_count}张")
     print(f'下载失败的图片链接：{fail_list}')
 
