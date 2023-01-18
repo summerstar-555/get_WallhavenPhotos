@@ -1,3 +1,5 @@
+from urllib import response
+
 import requests
 from lxml import etree
 import time
@@ -24,6 +26,30 @@ def print_tags():  # 输出标签
         print(f"\033[0;36;40m{tag_content}\033[0m", end='  ')  # 改变字体的前景色和背景色
 
 
+def rand_ua():
+    # ua列表
+    user_agent_list = [
+        'Mozilla/5.0 (WindowsNT6.1;WOW64)AppleWebKit/537.36(KHTML,likeGecko)Chrome/39.0.2171.95Safari/537.36OPR/26.0.16'
+        '56.60',
+        'Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/53'
+        '7.36',
+        'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_8; en-us) AppleWebKit/534.50 (KHTML, like Gecko) Version/5.1 Sa'
+        'fari/534.50',
+        'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-us) AppleWebKit/534.50 (KHTML, like Gecko) Version/5.1 Safari/534.'
+        '50',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.6; rv:2.0.1) Gecko/20100101 Firefox/4.0.1',
+        'Mozilla/5.0 (Windows NT 6.1; rv:2.0.1) Gecko/20100101 Firefox/4.0.1',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_0) AppleWebKit/535.11 (KHTML, like Gecko) Chrome/17.0.963.56 Safar'
+        'i/535.11',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.3'
+        '6 Edg/108.0.1462.76'
+    ]
+    rand_num = randint(0, len(user_agent_list) - 1)  # 随机数从0开始，列表总数-1结束
+    header_fuc = {
+        'user-agent': user_agent_list[rand_num],  # 每次都生成随机的UA
+    }
+    return header_fuc
+
 def is_dir(tag: str):
     if not os.path.exists('./Pictures'):
         os.mkdir('./Pictures')
@@ -38,26 +64,15 @@ def is_dir(tag: str):
         os.mkdir(pic_path)
 
 
-def image_link_process(image_link: str, status_code=200, tag=None) -> str:
+def image_link_process(image_link: str) -> str:
     # https://w.wallhaven.cc/full/rd/wallhaven-rddgwm.jpg
     # https://th.wallhaven.cc/small/rd/rddgwm.jpg
-    if status_code == 200:
-        if "small" in image_link:
-            image_link = image_link.replace("th", "w")
-            image_link = image_link.replace("small", "full")
-            url_path = image_link.split("/")
-            url_path[-1] = f"wallhaven-{url_path[-1]}"
-            return "/".join(url_path)
-    elif status_code == 404:  # 有可能是大小图片的后缀不同导致404，因此修改再进行尝试，为节省资源，只尝试一次
-        image_link = image_link.replace('jpg', 'png')
-        try:
-            resp = requests.get(image_link, headers=rand_ua())
-        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):  # 如果五秒内没有响应，那么输出连接超时
-            warning('图片重新下载失败！')
-        if resp.status_code != 200:
-            warning('图片重新下载失败！')
-        else:
-            write_pic(tag, resp)
+    if "small" in image_link:
+        image_link = image_link.replace("th", "w")
+        image_link = image_link.replace("small", "full")
+        url_path = image_link.split("/")
+        url_path[-1] = f"wallhaven-{url_path[-1]}"
+        return "/".join(url_path)
 
 
 def write_pic(tag: str, fullpic_resp, n) -> None:  # 将图片的内容写入
@@ -69,6 +84,22 @@ def write_pic(tag: str, fullpic_resp, n) -> None:  # 将图片的内容写入
             tag = tag.replace(char, ' ')
     with open(f'./Pictures/{tag}/%s.jpg' % time.time(), 'wb') as f:  # 使用时间戳命名
         f.write(fullpic_resp.content)
+
+
+def again(fail_link: str, status_code: int) -> response:            # 重新下载
+    if status_code == 404:  # 有可能是大小图片的后缀不同导致404，因此修改再进行尝试，为节省资源，只尝试一次
+        fail_link = fail_link.replace('jpg', 'png')  # 将jpg的后缀替换为png
+        try:
+            resp = requests.get(fail_link, headers=rand_ua())
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):  # 如果五秒内没有响应，那么输出连接超时
+            warning('图片重新下载失败！')
+
+        # 成功则返回对应链接的response，失败返回空值
+        if resp.status_code != 200:
+            warning('图片重新下载失败！')
+            return None
+        else:
+            return resp
 
 
 def download_pictures(page_num_fuc: int, tag: str, n):  # 一页一页地下载，一页有24张图片
@@ -104,7 +135,7 @@ def download_pictures(page_num_fuc: int, tag: str, n):  # 一页一页地下载�
     for link in small_list:
         full_pic = image_link_process(link)  # 全屏壁纸的链接
         try:
-            fullpic_resp = requests.get(full_pic, timeout=10)
+            fullpic_resp = requests.get(full_pic, timeout=5)
         except (requests.exceptions.ConnectTimeout, requests.exceptions.Timeout):
             warning('连接网页超时')
             continue  # 跳过这一张图片的下载
@@ -113,61 +144,28 @@ def download_pictures(page_num_fuc: int, tag: str, n):  # 一页一页地下载�
         if not fullpic_resp.status_code == 200:
             fail_count = fail_count + 1
             print(f"找不到图片！({fail_count})")
-            fail_list.append((fullpic_resp.status_code, full_pic))  # 将状态码以及url已元组形式存放
+            fail_list.append((full_pic, fullpic_resp.status_code))  # 将url以及状态码以元组形式存放
         # 连接成功时：
         else:
             write_pic(tag, fullpic_resp, n)
+    if len(fail_list) != 0:
+        print('图片重新下载中……')
+        for fail_link in fail_list:
+            resp_again = again(fail_link[0], fail_link[1])
+            if not resp_again:      # 如果返回的不是空值，那么
+                write_pic(tag, resp_again, n)
+                fail_list.remove(fail_link)
     print(f"第{page_num_fuc}页一共下载了{n.value}张图片，下载失败的图片一共有{fail_count}张")
     print(f'下载失败的图片链接：{fail_list}')
 
 
-def rand_ua():
-    # ua列表
-    user_agent_list = [
-        'Mozilla/5.0 (WindowsNT6.1;WOW64)AppleWebKit/537.36(KHTML,likeGecko)Chrome/39.0.2171.95Safari/537.36OPR/26.0.16'
-        '56.60',
-        'Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/53'
-        '7.36',
-        'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_8; en-us) AppleWebKit/534.50 (KHTML, like Gecko) Version/5.1 Sa'
-        'fari/534.50',
-        'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-us) AppleWebKit/534.50 (KHTML, like Gecko) Version/5.1 Safari/534.'
-        '50',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.6; rv:2.0.1) Gecko/20100101 Firefox/4.0.1',
-        'Mozilla/5.0 (Windows NT 6.1; rv:2.0.1) Gecko/20100101 Firefox/4.0.1',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_0) AppleWebKit/535.11 (KHTML, like Gecko) Chrome/17.0.963.56 Safar'
-        'i/535.11',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.3'
-        '6 Edg/108.0.1462.76'
-    ]
-    rand_num = randint(0, len(user_agent_list) - 1)  # 随机数从0开始，列表总数-1结束
-    header_fuc = {
-        'user-agent': user_agent_list[rand_num],  # 每次都生成随机的UA
-    }
-    return header_fuc
-
-
-# def test():
-#     download_pictures(1, '2023')
-#     print('成功下载的图片：', n.value)
-#
-#
-# test()
-# print('成功下载的图片：', n.value)
-
-
-if __name__ == '__main__':
-    print_tags()  # 输出标签
-    tag1 = input("\n请输入想搜索的内容标签：")
-    # 从这里开始显示查找标签的结果
-    if not search_result(tag1):  # 调用search_result检查查找的内容是否能查找到结果
-        print('找不到当前结果')
-        exit(0)
-    else:
+def main(tag1):
+    if __name__ == '__main__':
         start_time = time.time()  # 程序的运行开始时间
         process_count = 2  # 进程数量，可指定，进程数量决定下载页数
-        star_pagenum = 2  # 下载起始页
+        star_pagenum = 1  # 下载起始页
         processes = []  # 将生成的进程对象放进此列表中
-        n = Value('i', 0)     # 创建共享内存对象，在多进程中需要一个使用同一个变量
+        n = Value('i', 0)  # 创建共享内存对象，在多进程中需要一个使用同一个变量
 
         for page_num in range(star_pagenum, process_count + star_pagenum):  # 下载总页数等于进程数，一个进程下载一页的图片
             processes.append(Process(target=download_pictures, args=(page_num, tag1, n)))
@@ -180,3 +178,17 @@ if __name__ == '__main__':
             process.join()
 
         print(f'一共用时%.2f秒,一共下载了{n.value}张' % (time.time() - start_time))
+
+
+#
+#     print_tags()  # 输出标签
+#     tag1 = input("\n请输入想搜索的内容标签：")
+#     # 从这里开始显示查找标签的结果
+#     if not search_result(tag1):  # 调用search_result检查查找的内容是否能查找到结果
+#         print('找不到当前结果')
+#         exit(0)
+#     else:
+#         main()
+
+
+main('wlop')

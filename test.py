@@ -98,3 +98,7 @@ if __name__ == '__main__':
     pool.join()
     print('主进程结束，用时：%.3f' % (time.time() - start))
 '''
+
+list1 = [('https://w.wallhaven.cc/full/3k/wallhaven-3kgjv6.jpg', 404), ('https://w.wallhaven.cc/full/5w/wallhaven-5wxw31.jpg', 404), ('https://w.wallhaven.cc/full/ym/wallhaven-ymdmk7.jpg', 404), ('https://w.wallhaven.cc/full/6k/wallhaven-6kwk6q.jpg', 404), ('https://w.wallhaven.cc/full/5w/wallhaven-5wqom7.jpg', 404), ('https://w.wallhaven.cc/full/57/wallhaven-573239.jpg', 404)]
+list1.remove(('https://w.wallhaven.cc/full/3k/wallhaven-3kgjv6.jpg', 404))
+print(list1)
