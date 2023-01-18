@@ -159,7 +159,7 @@ def download_pictures(page_num_fuc: int, tag: str, n):  # 一页一页地下载�
     print(f'下载失败的图片链接：{fail_list}')
 
 
-def main(tag1):
+def main(tag1):     # 主函数
     if __name__ == '__main__':
         start_time = time.time()  # 程序的运行开始时间
         process_count = 2  # 进程数量，可指定，进程数量决定下载页数
