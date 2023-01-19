@@ -52,6 +52,7 @@ def rand_ua():
 
 def is_dir(tag: str):
     if not os.path.exists('./Pictures'):
+        print('跟目录下创建文件夹Pictures')
         os.mkdir('./Pictures')
 
     list1 = ['\\', '/', ':', '*', '?', '\"', '<', '>', '\'']  # 违规字符
@@ -61,6 +62,7 @@ def is_dir(tag: str):
     pic_path = f'./Pictures/{tag}/'  # 根据用户输入的标签进行创建文件夹
 
     if not os.path.exists(pic_path):  # 检查是否存在
+        print(f'在根目录下创建文件夹{pic_path}')
         os.mkdir(pic_path)
 
 
@@ -76,6 +78,7 @@ def image_link_process(image_link: str) -> str:
 
 
 def write_pic(tag: str, fullpic_resp, n) -> None:  # 将图片的内容写入
+    is_dir(tag)  # 判断目录是否存在
     n.value = n.value + 1  # 写入时将下载成功的次数加上
     print(f'下载成功({n.value})')
     list1 = ['\\', '/', ':', '*', '?', '\"', '<', '>', '\'']  # 违规字符
@@ -130,8 +133,10 @@ def download_pictures(page_num_fuc: int, tag: str, n):  # 一页一页地下载�
                 exit(0)  # 直接终止进程
     e = etree.HTML(r.text)
     r.close()
+
     small_list = e.xpath(small_xpath)  # 获取一页小图片的链接并放在列表中
-    is_dir(tag)  # 判断目录是否存在
+
+
     for link in small_list:
         full_pic = image_link_process(link)  # 全屏壁纸的链接
         try:
